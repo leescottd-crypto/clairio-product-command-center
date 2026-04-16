@@ -1293,12 +1293,12 @@ button:disabled {
 
 .workspace-command-deck {
   display: grid;
-  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 18px;
   border: 1px solid var(--line);
   border-radius: 24px;
-  padding: 18px;
+  padding: 18px 18px 16px;
   background:
     radial-gradient(circle at top right, rgba(116, 172, 214, 0.1), transparent 16rem),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 12rem),
@@ -1309,7 +1309,7 @@ button:disabled {
 .workspace-command-copy {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 10px;
 }
 
 .workspace-kicker {
@@ -1323,37 +1323,37 @@ button:disabled {
 .workspace-command-copy h2 {
   margin: 0;
   font-family: var(--display-font);
-  font-size: 30px;
+  font-size: 22px;
   letter-spacing: -0.04em;
-  line-height: 1.02;
+  line-height: 1.06;
 }
 
 .workspace-command-copy p {
   margin: 0;
-  max-width: 34rem;
+  max-width: 56rem;
   color: rgba(214, 228, 245, 0.74);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .workspace-command-signals {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
   gap: 12px;
 }
 
 .workspace-command-signal {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: start;
-  min-height: 132px;
   border: 1px solid rgba(173, 200, 231, 0.14);
   border-radius: 18px;
-  padding: 16px;
+  padding: 14px 15px;
   background: rgba(173, 200, 231, 0.06);
 }
 
 .workspace-command-signal span {
+  display: block;
   color: rgba(173, 200, 231, 0.74);
   font-size: 11px;
   font-weight: 800;
@@ -1362,16 +1362,18 @@ button:disabled {
 }
 
 .workspace-command-signal strong {
+  display: block;
   color: #f6fbff;
   font-family: var(--display-font);
-  font-size: 34px;
+  font-size: 28px;
   letter-spacing: -0.05em;
   line-height: 0.95;
 }
 
 .workspace-command-signal small {
+  display: block;
   color: rgba(214, 228, 245, 0.72);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -1416,11 +1418,11 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 24px;
-  padding: 18px;
+  padding: 16px 18px 18px;
   background: rgba(9, 17, 28, 0.82);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(12px);
@@ -1428,12 +1430,11 @@ button:disabled {
 }
 
 .planning-switcher-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
   gap: 24px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
+  margin-bottom: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(173, 200, 231, 0.12);
 }
 
@@ -1453,16 +1454,16 @@ button:disabled {
 .planning-switcher-header strong {
   color: #edf3ff;
   font-family: var(--display-font);
-  font-size: 24px;
-  line-height: 1;
+  font-size: 20px;
+  line-height: 1.06;
   letter-spacing: -0.04em;
 }
 
 .planning-switcher-header p {
-  max-width: 520px;
+  max-width: none;
   margin: 0;
   color: rgba(214, 228, 245, 0.72);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -3107,7 +3108,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   .planning-switcher-header {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
