@@ -1187,7 +1187,6 @@ button:disabled {
   font-weight: 400;
 }
 
-.board-actions .compact-select:hover,
 .board-actions .compact-select:focus-within {
   border-color: rgba(255, 250, 241, 0.16);
   background: rgba(255, 250, 241, 0.1);
@@ -1500,7 +1499,6 @@ button:disabled {
   min-height: 46px;
 }
 
-.planning-selector .compact-select:hover,
 .planning-selector .compact-select:focus-within {
   border-color: var(--line);
   background: rgba(173, 200, 231, 0.08);
