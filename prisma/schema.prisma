@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SystemRole {
+  OWNER
+  ADMIN
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum ScrumRole {
+  PRODUCT_OWNER
+  SCRUM_MASTER
+  ENGINEER
+  DESIGNER
+  QA_RELEASE
+  STAKEHOLDER
+  OBSERVER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum TaskStatus {
+  BACKLOG
+  READY
+  PROGRESS
+  TESTING
+  BLOCKED
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskType {
+  STORY
+  BUG
+  CHORE
+  SPIKE
+  DEBT
+}
+
+enum BoardVisibility {
+  PRIVATE
+  WORKSPACE
+  ORGANIZATION
+  PUBLIC
+}
+
+enum BoardTemplate {
+  BLANK
+  KANBAN
+  SCRUM
+  RELEASE
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum TaskActivityType {
+  CREATED
+  UPDATED
+  MOVED
+  COMMENTED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+  DELETED
+  RESTORED
+}
+
+enum RestorableEntityType {
+  BOARD
+  RELEASE
+  SPRINT
+  EPIC
+  TASK
+  ATTACHMENT
+}
+
+model Organization {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  memberships   Membership[]
+  boards        Board[]
+  releases      Release[]
+  invites       Invite[]
+  restoreEvents RestoreEvent[]
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  memberships Membership[]
+}
+
+model Membership {
+  id              String           @id @default(cuid())
+  organizationId  String
+  userId          String
+  team            String
+  title           String
+  systemRole      SystemRole
+  scrumRole       ScrumRole
+  status          MembershipStatus
+  capacity        Int
+  invitedAt       DateTime         @default(now())
+  lastActiveAt    DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  ownedEpics      Epic[]           @relation("EpicOwner")
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+}
+
+model Board {
+  id            String          @id @default(cuid())
+  organizationId String
+  title         String
+  workspace     String
+  visibility    BoardVisibility
+  template      BoardTemplate
+  description   String          @db.Text
+  background    String
+  starred       Boolean         @default(false)
+  createdById   String?
+  updatedById   String?
+  deletedAt     DateTime?
+  deletedById   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks         Task[]
+
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, deletedAt])
+}
+
+model Release {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  goal           String        @db.Text
+  startDate      DateTime
+  endDate        DateTime
+  createdById    String?
+  updatedById    String?
+  deletedAt      DateTime?
+  deletedById    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sprints        Sprint[]
+  epics          Epic[]
+  tasks          Task[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, startDate, endDate])
+  @@index([organizationId, deletedAt])
+}
+
+model Sprint {
+  id           String    @id @default(cuid())
+  releaseId    String
+  name         String
+  goal         String    @db.Text
+  startDate    DateTime
+  endDate      DateTime
+  capacity     Int
+  createdById  String?
+  updatedById  String?
+  deletedAt    DateTime?
+  deletedById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  release      Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@unique([releaseId, name])
+  @@index([releaseId, startDate, endDate])
+  @@index([releaseId, deletedAt])
+}
+
+model Epic {
+  id                String       @id @default(cuid())
+  releaseId         String
+  ownerMembershipId String?
+  name              String
+  goal              String       @db.Text
+  createdById       String?
+  updatedById       String?
+  deletedAt         DateTime?
+  deletedById       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  release           Release      @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  owner             Membership?  @relation("EpicOwner", fields: [ownerMembershipId], references: [id], onDelete: SetNull)
+  tasks             Task[]
+
+  @@unique([releaseId, name])
+  @@index([releaseId, deletedAt])
+}
+
+model Task {
+  id                   String          @id @default(cuid())
+  boardId              String
+  assigneeMembershipId String?
+  title                String
+  type                 TaskType
+  status               TaskStatus
+  priority             Priority
+  points               Int
+  epicId               String
+  releaseId            String
+  sprintId             String?
+  dueDate              DateTime?
+  completedAt          DateTime?
+  acceptance           String          @db.Text
+  notes                String          @db.Text
+  createdById          String?
+  updatedById          String?
+  deletedAt            DateTime?
+  deletedById          String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  board                Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  assignee             Membership?     @relation("TaskAssignee", fields: [assigneeMembershipId], references: [id], onDelete: SetNull)
+  epic                 Epic            @relation(fields: [epicId], references: [id], onDelete: Restrict)
+  release              Release         @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  sprint               Sprint?         @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  attachments          TaskAttachment[]
+  activity             TaskActivity[]
+
+  @@index([boardId, status])
+  @@index([releaseId, sprintId, epicId])
+  @@index([assigneeMembershipId, status])
+  @@index([deletedAt])
+}
+
+model TaskAttachment {
+  id           String    @id @default(cuid())
+  taskId       String
+  storageKey   String    @unique
+  originalName String
+  mimeType     String
+  byteSize     Int
+  createdById  String?
+  deletedAt    DateTime?
+  deletedById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  task         Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@index([deletedAt])
+}
+
+model TaskActivity {
+  id          String            @id @default(cuid())
+  taskId      String
+  actorUserId String?
+  action      TaskActivityType
+  fromStatus  TaskStatus?
+  toStatus    TaskStatus?
+  details     Json?
+  createdAt   DateTime          @default(now())
+  task        Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+}
+
+model Invite {
+  id             String        @id @default(cuid())
+  organizationId String
+  email          String
+  systemRole     SystemRole
+  scrumRole      ScrumRole
+  team           String
+  title          String
+  capacity       Int
+  tokenHash      String        @unique
+  status         InviteStatus  @default(PENDING)
+  invitedById    String?
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([email, status])
+}
+
+model RestoreEvent {
+  id             String               @id @default(cuid())
+  organizationId String
+  entityType     RestorableEntityType
+  entityId       String
+  restoredById   String?
+  details        Json?
+  createdAt      DateTime             @default(now())
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType, createdAt])
+}
