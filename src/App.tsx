@@ -68,7 +68,7 @@ import type {
   WorkspaceMember,
 } from "./shared/domain";
 
-type ViewMode = "board" | "sprint" | "epics" | "releases" | "team" | "access";
+type ViewMode = "board" | "sprint" | "epics" | "releases" | "reports" | "team" | "access";
 type ThemeMode = "light" | "dark";
 
 type PendingAttachment = TaskAttachment & {
@@ -79,6 +79,19 @@ type BurndownPoint = {
   date: string;
   ideal: number;
   actual: number;
+};
+
+type ReleaseSprintReportRow = {
+  sprintId: string;
+  sprintName: string;
+  startDate: string;
+  endDate: string;
+  startingBacklog: number;
+  addedInSprint: number;
+  completedInSprint: number;
+  remainingAfterSprint: number;
+  scopeAtEnd: number;
+  unestimatedRemainingCount: number;
 };
 
 type SelectOption = {
@@ -96,7 +109,7 @@ const SPRINTS_STORAGE_KEY = "clairio-product-task-manager:sprints:v1";
 const THEME_STORAGE_KEY = "clairio-product-task-manager:theme:v1";
 const LEGACY_STORAGE_KEY = "clairio-product-task-manager:v1";
 const ALL_EPICS_ID = "all";
-const viewModes: ViewMode[] = ["board", "sprint", "epics", "releases", "team", "access"];
+const viewModes: ViewMode[] = ["board", "sprint", "epics", "releases", "reports", "team", "access"];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const roleLabels: Record<SystemRole, string> = {
@@ -289,7 +302,8 @@ const templateLabels: Record<BoardTemplate, string> = {
 };
 
 const APP_NAME = "Clairio Product Command Center";
-const APP_SUPPORT_COPY = "Plan product work, assign ownership, and track release pace.";
+const APP_SUPPORT_COPY =
+  "Coordinate backlog, sprint execution, and release signal from one delivery intelligence layer.";
 const LEGACY_APP_DESCRIPTION = "Sprint planning, Kanban flow, and release confidence for the product team.";
 const BRAND_LOGO_SRC = "/clairio-logo.png";
 
@@ -548,6 +562,10 @@ function isSprintMemberCapacities(value: unknown): value is SprintMemberCapaciti
   return Object.values(value).every((points) => typeof points === "number" && Number.isFinite(points));
 }
 
+function inferTaskReleaseStart(releaseId: string) {
+  return seedReleases.find((release) => release.id === releaseId)?.startDate ?? "2026-04-15";
+}
+
 function isProductTask(value: unknown): value is ProductTask {
   if (!value || typeof value !== "object") {
     return false;
@@ -755,6 +773,11 @@ function normalizeMember(member: WorkspaceMember): WorkspaceMember {
 }
 
 function normalizeTask(task: ProductTask): ProductTask {
+  const taskWithMeta = task as ProductTask & {
+    createdAt?: string;
+    updatedAt?: string;
+    releaseAddedAt?: string;
+  };
   const rawStatus = typeof (task as { status?: string }).status === "string"
     ? (task as { status?: string }).status
     : "backlog";
@@ -762,10 +785,16 @@ function normalizeTask(task: ProductTask): ProductTask {
     rawStatus === "review" ? "testing" : lanes.some((lane) => lane.id === rawStatus)
       ? (rawStatus as TaskStatus)
       : "backlog";
+  const createdAt = taskWithMeta.createdAt || task.completedOn || inferTaskReleaseStart(task.releaseId);
+  const releaseAddedAt = taskWithMeta.releaseAddedAt || createdAt;
+  const updatedAt = taskWithMeta.updatedAt || createdAt;
 
   return {
     ...task,
     status: normalizedStatus,
+    createdAt,
+    updatedAt,
+    releaseAddedAt,
     attachments: Array.isArray(task.attachments)
       ? task.attachments.filter(isTaskAttachment)
       : [],
@@ -903,7 +932,7 @@ function loadThemeMode(): ThemeMode {
     return storedTheme;
   }
 
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "dark";
 }
 
 function loadViewMode(): ViewMode {
@@ -1028,6 +1057,63 @@ function calculateBurndown(
       date,
       ideal: Math.max(0, Math.round(total - (total * index) / lastIndex)),
       actual: Math.max(0, total - completedThroughDate),
+    };
+  });
+}
+
+function buildReleaseSprintReportRows(
+  tasks: ProductTask[],
+  sprints: Sprint[],
+): ReleaseSprintReportRow[] {
+  const orderedSprints = [...sprints].sort((left, right) =>
+    left.startDate.localeCompare(right.startDate),
+  );
+
+  return orderedSprints.map((sprint) => {
+    const taskAddedOn = (task: ProductTask) => (task.releaseAddedAt ?? "").slice(0, 10);
+    const taskCompletedOn = (task: ProductTask) => (task.completedOn ?? "").slice(0, 10);
+    const startingBacklog = tasks
+      .filter(
+        (task) =>
+          taskAddedOn(task) < sprint.startDate &&
+          (!task.completedOn || taskCompletedOn(task) >= sprint.startDate),
+      )
+      .reduce((total, task) => total + task.points, 0);
+    const addedInSprint = tasks
+      .filter(
+        (task) =>
+          Boolean(task.releaseAddedAt) &&
+          taskAddedOn(task) >= sprint.startDate &&
+          taskAddedOn(task) <= sprint.endDate,
+      )
+      .reduce((total, task) => total + task.points, 0);
+    const completedInSprint = tasks
+      .filter(
+        (task) =>
+          Boolean(task.completedOn) &&
+          taskCompletedOn(task) >= sprint.startDate &&
+          taskCompletedOn(task) <= sprint.endDate,
+      )
+      .reduce((total, task) => total + task.points, 0);
+    const remainingTasks = tasks.filter(
+      (task) =>
+        taskAddedOn(task) <= sprint.endDate &&
+        (!task.completedOn || taskCompletedOn(task) > sprint.endDate),
+    );
+
+    return {
+      sprintId: sprint.id,
+      sprintName: sprint.name,
+      startDate: sprint.startDate,
+      endDate: sprint.endDate,
+      startingBacklog,
+      addedInSprint,
+      completedInSprint,
+      remainingAfterSprint: remainingTasks.reduce((total, task) => total + task.points, 0),
+      scopeAtEnd: tasks
+        .filter((task) => taskAddedOn(task) <= sprint.endDate)
+        .reduce((total, task) => total + task.points, 0),
+      unestimatedRemainingCount: remainingTasks.filter((task) => task.points === 0).length,
     };
   });
 }
@@ -1331,10 +1417,12 @@ function BurndownChart({
   title,
   subtitle,
   points,
+  className = "",
 }: {
   title: string;
   subtitle: string;
   points: BurndownPoint[];
+  className?: string;
 }) {
   const width = 420;
   const height = 180;
@@ -1352,7 +1440,7 @@ function BurndownChart({
   const actualPath = points.map((point, index) => toPoint(point.actual, index)).join(" ");
 
   return (
-    <article className="chart-card">
+    <article className={["chart-card", className].filter(Boolean).join(" ")}>
       <div className="chart-heading">
         <div>
           <h3>{title}</h3>
@@ -1378,6 +1466,134 @@ function BurndownChart({
       <div className="chart-legend">
         <span><i className="legend-actual" />Actual</span>
         <span><i className="legend-ideal" />Ideal</span>
+      </div>
+    </article>
+  );
+}
+
+function ReleaseScopeChart({
+  title,
+  subtitle,
+  rows,
+  className = "",
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReleaseSprintReportRow[];
+  className?: string;
+}) {
+  const width = 420;
+  const height = 180;
+  const padding = 26;
+  const maxValue = Math.max(
+    1,
+    ...rows.flatMap((row) => [row.scopeAtEnd, row.remainingAfterSprint, row.completedInSprint]),
+  );
+  const denominator = Math.max(1, rows.length - 1);
+
+  const toPoint = (value: number, index: number) => {
+    const x = padding + (index / denominator) * (width - padding * 2);
+    const y = height - padding - (value / maxValue) * (height - padding * 2);
+    return `${x},${y}`;
+  };
+
+  const scopePath = rows.map((row, index) => toPoint(row.scopeAtEnd, index)).join(" ");
+  const remainingPath = rows.map((row, index) => toPoint(row.remainingAfterSprint, index)).join(" ");
+
+  return (
+    <article className={["chart-card", className].filter(Boolean).join(" ")}>
+      <div className="chart-heading">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <span>{rows[rows.length - 1]?.remainingAfterSprint ?? 0} pts remaining</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title} scope chart`}>
+        <line x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+        <line x1={padding} x2={padding} y1={padding} y2={height - padding} />
+        <polyline className="scope-line" points={scopePath} />
+        <polyline className="actual-line" points={remainingPath} />
+        {rows.map((row, index) => (
+          <circle
+            key={`${row.sprintId}-${row.remainingAfterSprint}`}
+            className="actual-dot"
+            cx={toPoint(row.remainingAfterSprint, index).split(",")[0]}
+            cy={toPoint(row.remainingAfterSprint, index).split(",")[1]}
+            r="3"
+          />
+        ))}
+      </svg>
+      <div className="chart-legend">
+        <span><i className="legend-actual" />Remaining</span>
+        <span><i className="legend-scope" />Scope</span>
+      </div>
+    </article>
+  );
+}
+
+function ReleaseSprintBarsChart({
+  title,
+  subtitle,
+  rows,
+  className = "",
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReleaseSprintReportRow[];
+  className?: string;
+}) {
+  const maxValue = Math.max(1, ...rows.map((row) => Math.max(row.scopeAtEnd, row.startingBacklog + row.addedInSprint)));
+
+  return (
+    <article className={["chart-card", className].filter(Boolean).join(" ")}>
+      <div className="chart-heading">
+        <div>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <span>{rows.length} sprint{rows.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="release-sprint-bars" role="img" aria-label={`${title} stacked sprint bars`}>
+        {rows.map((row) => {
+          const baseRemaining = Math.max(0, row.scopeAtEnd - row.addedInSprint - row.completedInSprint);
+          const completedPercent = (row.completedInSprint / maxValue) * 100;
+          const carryPercent = (baseRemaining / maxValue) * 100;
+          const addedPercent = (row.addedInSprint / maxValue) * 100;
+
+          return (
+            <div className="release-sprint-bar-row" key={row.sprintId}>
+              <div className="release-sprint-bar-meta">
+                <strong>{row.sprintName}</strong>
+                <span>{row.startDate} to {row.endDate}</span>
+              </div>
+              <div className="release-sprint-bar-track">
+                <span
+                  className="release-sprint-bar-segment release-sprint-bar-completed"
+                  style={{ width: `${completedPercent}%` }}
+                />
+                <span
+                  className="release-sprint-bar-segment release-sprint-bar-carry"
+                  style={{ width: `${carryPercent}%` }}
+                />
+                <span
+                  className="release-sprint-bar-segment release-sprint-bar-added"
+                  style={{ width: `${addedPercent}%` }}
+                />
+              </div>
+              <div className="release-sprint-bar-stats">
+                <span>{row.completedInSprint} done</span>
+                <span>{row.addedInSprint} added</span>
+                <span>{row.remainingAfterSprint} left</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="chart-legend">
+        <span><i className="legend-completed-sprint" />Completed</span>
+        <span><i className="legend-carry-sprint" />Carryover</span>
+        <span><i className="legend-added-sprint" />Added in sprint</span>
       </div>
     </article>
   );
@@ -1617,6 +1833,9 @@ function App() {
       return matchesQuery && matchesPriority && matchesAssignee;
     });
   }, [activeReleases, assigneeFilter, scopedBoardTasks, epics, members, priorityFilter, query]);
+  const filteredTaskPoints = sumPoints(filteredTasks);
+  const filteredBlockedCount = filteredTasks.filter((task) => task.status === "blocked").length;
+  const filteredReadyCount = filteredTasks.filter((task) => task.status === "ready").length;
 
   const activeReleaseTasks = boardTasks.filter((task) => task.releaseId === activeRelease.id);
   const sprintTasks = activeSprint
@@ -1639,6 +1858,23 @@ function App() {
     activeReleaseTotalPoints > 0
       ? (activeReleaseCompletedPoints / activeReleaseTotalPoints) * 100
       : 0;
+  const releaseReportRows = buildReleaseSprintReportRows(activeReleaseTasks, releaseSprints);
+  const releaseScopeAddedPoints = releaseReportRows.reduce(
+    (total, row) => total + row.addedInSprint,
+    0,
+  );
+  const releaseAverageVelocity =
+    releaseReportRows.length > 0
+      ? Math.round(
+          releaseReportRows.reduce((total, row) => total + row.completedInSprint, 0) /
+            releaseReportRows.length,
+        )
+      : 0;
+  const releaseProjectedSprintsRemaining =
+    releaseAverageVelocity > 0
+      ? Math.ceil(activeReleaseRemainingPoints / releaseAverageVelocity)
+      : null;
+  const latestReleaseReportRow = releaseReportRows[releaseReportRows.length - 1] ?? null;
   const activeEpicTotalPoints = sumPoints(activeEpicTasks);
   const activeEpicDonePoints = completedPoints(activeEpicTasks);
   const activeEpicRemainingPoints = Math.max(0, activeEpicTotalPoints - activeEpicDonePoints);
@@ -1648,6 +1884,14 @@ function App() {
     activeRelease.endDate,
   );
   const todayKey = formatDate(new Date());
+  const upcomingWindowEnd = formatDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+  const filteredDueSoonCount = filteredTasks.filter(
+    (task) =>
+      Boolean(task.dueDate) &&
+      task.status !== "done" &&
+      task.dueDate >= todayKey &&
+      task.dueDate <= upcomingWindowEnd,
+  ).length;
   const todayReleasePoint = releaseBurndownPoints.find((point) => point.date === todayKey) ?? null;
   const idealRemainingToday =
     todayKey <= activeRelease.startDate
@@ -1695,8 +1939,31 @@ function App() {
       : releaseCatchUpPoints > 0
         ? `${releaseCatchUpPoints} pts to recover`
         : releaseAheadPoints > 0
-          ? `${releaseAheadPoints} pts ahead`
-          : `${activeReleaseRemainingPoints} pts left`;
+        ? `${releaseAheadPoints} pts ahead`
+        : `${activeReleaseRemainingPoints} pts left`;
+  const releaseProjectionCopy =
+    activeReleaseRemainingPoints === 0
+      ? "Release scope is complete."
+      : releaseProjectedSprintsRemaining
+        ? `At the current pace, about ${releaseProjectedSprintsRemaining} more sprint${
+            releaseProjectedSprintsRemaining === 1 ? "" : "s"
+          } to finish.`
+        : "Need at least one completed sprint before we can project release finish pace.";
+  const workspaceScopeLabel = activeSprint
+    ? `${activeSprint.name} execution scope`
+    : `${activeRelease.name} release scope`;
+  const workspaceScopeCopy = activeSprint
+    ? "Focus the board on sprint execution, delivery risk, and what needs to move next."
+    : "Watch release-level flow, blockers, and readiness without leaving the board.";
+  const paceSignalValue = activeSprint
+    ? `${sprintCommitted}/${activeSprint.capacity}`
+    : `${releaseAverageVelocity || 0}`;
+  const paceSignalLabel = activeSprint ? "Sprint load" : "Avg velocity";
+  const paceSignalDetail = activeSprint
+    ? `${Math.max(0, activeSprint.capacity - sprintCommitted)} pts headroom`
+    : releaseReportRows.length > 0
+      ? "pts completed per sprint"
+      : "Need one completed sprint";
   const teamScopeTasks = activeSprint ? sprintTasks : activeReleaseTasks;
   const teamScopeName = activeSprint ? activeSprint.name : `${activeRelease.name} release scope`;
   const teamScopeDetail = activeSprint
@@ -1918,6 +2185,20 @@ function App() {
         : "",
       attachments: draft.attachments,
     };
+    const today = formatDate(new Date());
+    const nowIso = new Date().toISOString();
+    const previousTask = editingId
+      ? tasks.find((task) => task.id === editingId) ?? null
+      : null;
+    const releaseAddedAt =
+      previousTask && previousTask.releaseId === normalizedDraft.releaseId
+        ? previousTask.releaseAddedAt ?? previousTask.createdAt ?? today
+        : today;
+    const createdAt = previousTask?.createdAt ?? today;
+    const completedOn =
+      normalizedDraft.status === "done"
+        ? previousTask?.completedOn || today
+        : "";
 
     try {
       await Promise.all(
@@ -1945,10 +2226,10 @@ function App() {
             ? {
                 ...normalizedDraft,
                 id: task.id,
-                completedOn:
-                  normalizedDraft.status === "done"
-                    ? task.completedOn || formatDate(new Date())
-                    : "",
+                completedOn,
+                createdAt,
+                updatedAt: nowIso,
+                releaseAddedAt,
               }
             : task,
         ),
@@ -1958,7 +2239,10 @@ function App() {
         {
           ...normalizedDraft,
           id: crypto.randomUUID(),
-          completedOn: normalizedDraft.status === "done" ? formatDate(new Date()) : "",
+          completedOn,
+          createdAt,
+          updatedAt: nowIso,
+          releaseAddedAt,
         },
         ...current,
       ]);
@@ -2650,6 +2934,9 @@ function App() {
       completedOn: _completedOn,
       deletedAt: _deletedAt,
       deletedBy: _deletedBy,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      releaseAddedAt: _releaseAddedAt,
       ...taskDraft
     } = task;
     setActiveBoardId(task.boardId);
@@ -2838,8 +3125,18 @@ function App() {
               alt=""
               aria-hidden="true"
             />
+            <span className="brand-copy">
+              <strong>Clairio</strong>
+              <small>Delivery Intelligence Console</small>
+            </span>
           </a>
           <div className="session-tools">
+            <div className="session-summary" aria-label="Workspace session context">
+              <span className="session-chip">{activeRelease.name}</span>
+              <span className="session-chip">
+                {roleLabels[currentUser.systemRole]} · {currentUser.name}
+              </span>
+            </div>
             <button
               className="theme-toggle"
               type="button"
@@ -2854,8 +3151,14 @@ function App() {
 
         <div className="hero-grid">
           <div className="hero-copy">
+            <span className="hero-eyebrow">Delivery Intelligence For Product Teams</span>
             <h1>{APP_NAME}</h1>
             <p>{APP_SUPPORT_COPY}</p>
+            <div className="hero-copy-meta" aria-label="Workspace posture">
+              <span>Release intelligence</span>
+              <span>Execution command</span>
+              <span>Operational clarity</span>
+            </div>
           </div>
 
           <div className="hero-status-cluster" aria-label="Sprint and release signals">
@@ -2870,6 +3173,14 @@ function App() {
                 </span>
               </div>
               <strong>{releaseSignalHeadline}</strong>
+              <div className="signal-stats" aria-label="Release point totals">
+                <span>
+                  <strong>{activeReleaseTotalPoints}</strong> pts in release
+                </span>
+                <span>
+                  <strong>{activeReleaseRemainingPoints}</strong> pts remaining
+                </span>
+              </div>
               <p>{releaseTrackingDetail}</p>
               <small>{activeRelease.name} · target {activeRelease.endDate}</small>
             </article>
@@ -2911,9 +3222,13 @@ function App() {
             style={{ borderColor: activeBoard.background }}
           >
             <div className="board-swatch" style={{ background: activeBoard.background }} />
-            <div>
-              <span>{activeBoard.workspace} · {visibilityLabels[activeBoard.visibility]}</span>
+            <div className="board-identity">
+              <span>{activeBoard.workspace}</span>
               <strong>{activeBoard.title}</strong>
+              <div className="board-identity-meta">
+                <span>{visibilityLabels[activeBoard.visibility]}</span>
+                <span>{templateLabels[activeBoard.template]}</span>
+              </div>
               {visibleBoardDescription ? <p>{visibleBoardDescription}</p> : null}
             </div>
             <div className="board-actions">
@@ -2969,6 +3284,50 @@ function App() {
               Delete board
             </button>
           </div>
+
+          <section className="workspace-command-deck" aria-label="Board command overview">
+            <div className="workspace-command-copy">
+              <span className="workspace-kicker">Execution surface</span>
+              <h2>{workspaceScopeLabel}</h2>
+              <p>{workspaceScopeCopy}</p>
+            </div>
+            <div className="workspace-command-signals">
+              <article className="workspace-command-signal">
+                <span>Visible work</span>
+                <strong>{filteredTasks.length}</strong>
+                <small>{filteredTaskPoints} points in the current view</small>
+              </article>
+              <article className="workspace-command-signal">
+                <span>Blocked</span>
+                <strong>{filteredBlockedCount}</strong>
+                <small>
+                  {filteredBlockedCount > 0
+                    ? "Stories need intervention"
+                    : "No blockers in focus"}
+                </small>
+              </article>
+              <article className="workspace-command-signal">
+                <span>Ready queue</span>
+                <strong>{filteredReadyCount}</strong>
+                <small>
+                  {filteredReadyCount > 0
+                    ? "Stories primed for pull"
+                    : "No ready work queued"}
+                </small>
+              </article>
+              <article className="workspace-command-signal">
+                <span>{paceSignalLabel}</span>
+                <strong>{paceSignalValue}</strong>
+                <small>
+                  {activeSprint
+                    ? paceSignalDetail
+                    : filteredDueSoonCount > 0
+                      ? `${filteredDueSoonCount} item${filteredDueSoonCount === 1 ? "" : "s"} due this week`
+                      : paceSignalDetail}
+                </small>
+              </article>
+            </div>
+          </section>
 
           {showBoardCreator ? (
             <section className="board-create-panel">
@@ -3060,6 +3419,16 @@ function App() {
           ) : null}
 
           <section className="planning-switcher" aria-label="Planning navigation">
+            <div className="planning-switcher-header">
+              <div>
+                <span className="planning-kicker">Planning Rail</span>
+                <strong>{activeRelease.name}</strong>
+              </div>
+              <p>
+                Set release, sprint, and epic context once, then move between execution and reporting
+                without losing scope.
+              </p>
+            </div>
             <div className="planning-selectors">
               <label className="planning-selector">
                 Release
@@ -3132,6 +3501,7 @@ function App() {
                 ["sprint", "Sprint", Target],
                 ["epics", "Epics", Layers3],
                 ["releases", "Releases", Flag],
+                ["reports", "Reports", BarChart3],
               ].map(([view, label, Icon]) => (
                 <button
                   key={view as string}
@@ -3484,6 +3854,7 @@ function App() {
 
           <div className="view-tabs" aria-label="Workspace views">
             {[
+              ["reports", "Reports", BarChart3],
               ["team", "Team Load", UsersRound],
               ["access", "Access", ShieldCheck],
             ].map(([view, label, Icon]) => (
@@ -4035,6 +4406,114 @@ function App() {
                   activeRelease.endDate,
                 )}
               />
+            </section>
+          ) : null}
+
+          {viewMode === "reports" ? (
+            <section className="reports-grid">
+              <article className="summary-card selector-row report-summary-card">
+                <div className="section-title">
+                  <BarChart3 size={18} />
+                  <h2>{activeRelease.name} reporting</h2>
+                </div>
+                <p>
+                  Release reporting rolls up backlog carried into each sprint, scope added inside
+                  the sprint, completed work, and what remained after sprint close.
+                </p>
+                <div className="summary-stats">
+                  <span>
+                    <strong>{activeReleaseTotalPoints}</strong> pts in release
+                  </span>
+                  <span>
+                    <strong>{activeReleaseRemainingPoints}</strong> pts remaining
+                  </span>
+                  <span>
+                    <strong>{releaseScopeAddedPoints}</strong> pts added across sprints
+                  </span>
+                  <span>
+                    <strong>{releaseAverageVelocity}</strong> avg sprint velocity
+                  </span>
+                  <span>
+                    <strong>
+                      {releaseProjectedSprintsRemaining === null
+                        ? "TBD"
+                        : releaseProjectedSprintsRemaining}
+                    </strong>{" "}
+                    projected sprints left
+                  </span>
+                  {latestReleaseReportRow ? (
+                    <span>
+                      <strong>{latestReleaseReportRow.unestimatedRemainingCount}</strong>{" "}
+                      unestimated items left
+                    </span>
+                  ) : null}
+                </div>
+                <p className="report-projection-copy">{releaseProjectionCopy}</p>
+              </article>
+              {releaseReportRows.length > 0 ? (
+                <>
+                  <BurndownChart
+                    className="report-primary-chart"
+                    title={`${activeRelease.name} burndown`}
+                    subtitle={`${activeRelease.startDate} to ${activeRelease.endDate}`}
+                    points={releaseBurndownPoints}
+                  />
+                  <ReleaseScopeChart
+                    className="report-secondary-chart"
+                    title="Release scope trend"
+                    subtitle="Total scoped work versus work still remaining after each sprint."
+                    rows={releaseReportRows}
+                  />
+                  <ReleaseSprintBarsChart
+                    className="report-secondary-chart"
+                    title="Sprint backlog accounting"
+                    subtitle="Backlog carried in, scope added during sprint, and work completed."
+                    rows={releaseReportRows}
+                  />
+                  <article className="summary-card wide report-accounting-card">
+                    <div className="section-title">
+                      <ClipboardList size={18} />
+                      <h2>Release sprint accounting</h2>
+                    </div>
+                    <div className="report-table-wrap">
+                      <table className="report-table">
+                        <thead>
+                          <tr>
+                            <th>Sprint</th>
+                            <th>Dates</th>
+                            <th>Starting backlog</th>
+                            <th>Added in sprint</th>
+                            <th>Completed in sprint</th>
+                            <th>Remaining after sprint</th>
+                            <th>Unestimated left</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {releaseReportRows.map((row) => (
+                            <tr key={row.sprintId}>
+                              <td>{row.sprintName}</td>
+                              <td>
+                                {row.startDate} to {row.endDate}
+                              </td>
+                              <td>{row.startingBacklog} pts</td>
+                              <td>{row.addedInSprint} pts</td>
+                              <td>{row.completedInSprint} pts</td>
+                              <td>{row.remainingAfterSprint} pts</td>
+                              <td>{row.unestimatedRemainingCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+                </>
+              ) : (
+                <article className="summary-card empty-state-card selector-row">
+                  <BarChart3 size={24} />
+                  <h2>No sprint reporting yet</h2>
+                  <p>Create at least one sprint in this release to unlock sprint-by-sprint release reporting.</p>
+                </article>
+              )}
             </section>
           ) : null}
 

@@ -127,12 +127,18 @@ export type ProductTask = DeletedMeta & {
   sprintId: string;
   dueDate: string;
   completedOn: string;
+  createdAt?: string;
+  updatedAt?: string;
+  releaseAddedAt?: string;
   acceptance: string;
   notes: string;
   attachments: TaskAttachment[];
 };
 
-export type TaskDraft = Omit<ProductTask, "id" | "completedOn" | "deletedAt" | "deletedBy">;
+export type TaskDraft = Omit<
+  ProductTask,
+  "id" | "completedOn" | "deletedAt" | "deletedBy" | "createdAt" | "updatedAt" | "releaseAddedAt"
+>;
 export type EpicDraft = Omit<Epic, "id">;
 export type ReleaseDraft = Omit<Release, "id" | "deletedAt" | "deletedBy">;
 export type SprintDraft = Omit<Sprint, "id" | "deletedAt" | "deletedBy">;
