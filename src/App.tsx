@@ -1343,6 +1343,10 @@ function goalItems(goal: string): string[] {
     .filter(Boolean);
 }
 
+function firstGoalLine(goal: string): string {
+  return goalItems(goal)[0] ?? "";
+}
+
 function GoalList({ goal, className = "" }: { goal: string; className?: string }) {
   const items = goalItems(goal);
   if (items.length === 0) {
@@ -3268,9 +3272,9 @@ function App() {
             </div>
           </div>
 
-          <div className="destructive-action-row board-danger-row">
-            <button
-              className="danger-button danger-button-subtle"
+	          <div className="destructive-action-row board-danger-row">
+	            <button
+	              className="danger-button danger-button-subtle"
               type="button"
               onClick={() => deleteBoard(activeBoard.id)}
               disabled={!currentPermissions.manageRoadmap || activeBoards.length <= 1}
@@ -3281,12 +3285,112 @@ function App() {
               }
             >
               <Trash2 size={16} />
-              Delete board
-            </button>
-          </div>
+	              Delete board
+	            </button>
+	          </div>
 
-          <section className="workspace-command-deck" aria-label="Board command overview">
-            <div className="workspace-command-copy">
+	          <section className="planning-switcher" aria-label="Planning navigation">
+	            <div className="planning-switcher-header">
+	              <div>
+	                <span className="planning-kicker">Planning Rail</span>
+	                <strong>{activeRelease.name}</strong>
+	              </div>
+	              <div className="planning-switcher-copy">
+	                <p>
+	                  Set release, sprint, and epic context once, then move between execution and
+	                  reporting without losing scope.
+	                </p>
+	                <div className="planning-view-toggle" aria-label="Quick planning views">
+	                  {[
+	                    ["board", "Kanban", ClipboardList],
+	                    ["sprint", "Sprint", Target],
+	                    ["epics", "Epics", Layers3],
+	                    ["releases", "Releases", Flag],
+	                    ["reports", "Reports", BarChart3],
+	                  ].map(([view, label, Icon]) => (
+	                    <button
+	                      key={view as string}
+	                      className={viewMode === view ? "active" : ""}
+	                      type="button"
+	                      onClick={() => changeViewMode(view as ViewMode)}
+	                    >
+	                      <Icon size={15} />
+	                      {label as string}
+	                    </button>
+	                  ))}
+	                </div>
+	              </div>
+	            </div>
+	            <div className="planning-selectors">
+	              <label className="planning-selector">
+	                Release
+	                <span className="compact-select">
+	                  <Flag size={15} aria-hidden="true" />
+	                  <SelectField
+	                    value={activeReleaseId}
+	                    ariaLabel="Select release"
+	                    onChange={selectActiveRelease}
+	                    options={activeReleases.map((release) => ({
+	                      value: release.id,
+	                      label: release.name,
+	                    }))}
+	                  />
+	                </span>
+	                <small>{Math.round(activeReleaseDonePercent)}% done · {activeRelease.endDate}</small>
+	              </label>
+	              <label className="planning-selector">
+	                Sprint
+	                <span className="compact-select">
+	                  <Target size={15} aria-hidden="true" />
+	                  <SelectField
+	                    value={activeSprintId}
+	                    ariaLabel="Select sprint"
+	                    onChange={(nextSprintId) => {
+	                      setActiveSprintId(nextSprintId);
+	                      setPrefersReleaseScope(nextSprintId === "");
+	                      updateDraft("sprintId", nextSprintId);
+	                    }}
+	                    options={[
+	                      { value: "", label: "Release scope" },
+	                      ...releaseSprints.map((sprint) => ({
+	                        value: sprint.id,
+	                        label: sprint.name,
+	                      })),
+	                    ]}
+	                  />
+	                </span>
+	                <small>
+	                  {activeSprint
+	                    ? `${sprintRemaining} pts left · ${sprintCommitted}/${activeSprint.capacity} capacity`
+	                    : "Showing all release work"}
+	                </small>
+	              </label>
+	              <label className="planning-selector">
+	                Epic
+	                <span className="compact-select">
+	                  <Layers3 size={15} aria-hidden="true" />
+	                  <SelectField
+	                    value={activeEpicId}
+	                    ariaLabel="Select epic"
+	                    onChange={selectActiveEpic}
+	                    options={[
+	                      { value: ALL_EPICS_ID, label: "All epics" },
+	                      ...releaseEpics.map((epic) => ({
+	                        value: epic.id,
+	                        label: epic.name,
+	                      })),
+	                    ]}
+	                  />
+	                </span>
+	                <small>
+	                  {activeEpicRemainingPoints} pts left · {activeEpicOwner?.name ?? "All owners"}
+	                </small>
+	              </label>
+	            </div>
+	          </section>
+
+	          <section className="workspace-command-deck" aria-label="Board command overview">
+	            <div className="workspace-command-copy">
               <span className="workspace-kicker">Execution surface</span>
               <h2>{workspaceScopeLabel}</h2>
               <p>{workspaceScopeCopy}</p>
@@ -3325,9 +3429,9 @@ function App() {
                       ? `${filteredDueSoonCount} item${filteredDueSoonCount === 1 ? "" : "s"} due this week`
                       : paceSignalDetail}
                 </small>
-              </article>
-            </div>
-          </section>
+	              </article>
+	            </div>
+	          </section>
 
           {showBoardCreator ? (
             <section className="board-create-panel">
@@ -3418,106 +3522,8 @@ function App() {
             </section>
           ) : null}
 
-          <section className="planning-switcher" aria-label="Planning navigation">
-            <div className="planning-switcher-header">
-              <div>
-                <span className="planning-kicker">Planning Rail</span>
-                <strong>{activeRelease.name}</strong>
-              </div>
-              <p>
-                Set release, sprint, and epic context once, then move between execution and reporting
-                without losing scope.
-              </p>
-            </div>
-            <div className="planning-selectors">
-              <label className="planning-selector">
-                Release
-                <span className="compact-select">
-                  <Flag size={15} aria-hidden="true" />
-                  <SelectField
-                    value={activeReleaseId}
-                    ariaLabel="Select release"
-                    onChange={selectActiveRelease}
-                    options={activeReleases.map((release) => ({
-                      value: release.id,
-                      label: release.name,
-                    }))}
-                  />
-                </span>
-                <small>{Math.round(activeReleaseDonePercent)}% done · {activeRelease.endDate}</small>
-              </label>
-              <label className="planning-selector">
-                Sprint
-                <span className="compact-select">
-                  <Target size={15} aria-hidden="true" />
-                  <SelectField
-                    value={activeSprintId}
-                    ariaLabel="Select sprint"
-                    onChange={(nextSprintId) => {
-                      setActiveSprintId(nextSprintId);
-                      setPrefersReleaseScope(nextSprintId === "");
-                      updateDraft("sprintId", nextSprintId);
-                    }}
-                    options={[
-                      { value: "", label: "Release scope" },
-                      ...releaseSprints.map((sprint) => ({
-                        value: sprint.id,
-                        label: sprint.name,
-                      })),
-                    ]}
-                  />
-                </span>
-                <small>
-                  {activeSprint
-                    ? `${sprintRemaining} pts left · ${sprintCommitted}/${activeSprint.capacity} capacity`
-                    : "Showing all release work"}
-                </small>
-              </label>
-              <label className="planning-selector">
-                Epic
-                <span className="compact-select">
-                  <Layers3 size={15} aria-hidden="true" />
-                  <SelectField
-                    value={activeEpicId}
-                    ariaLabel="Select epic"
-                    onChange={selectActiveEpic}
-                    options={[
-                      { value: ALL_EPICS_ID, label: "All epics" },
-                      ...releaseEpics.map((epic) => ({
-                        value: epic.id,
-                        label: epic.name,
-                      })),
-                    ]}
-                  />
-                </span>
-                <small>
-                  {activeEpicRemainingPoints} pts left · {activeEpicOwner?.name ?? "All owners"}
-                </small>
-              </label>
-            </div>
-            <div className="planning-view-toggle" aria-label="Quick planning views">
-              {[
-                ["board", "Kanban", ClipboardList],
-                ["sprint", "Sprint", Target],
-                ["epics", "Epics", Layers3],
-                ["releases", "Releases", Flag],
-                ["reports", "Reports", BarChart3],
-              ].map(([view, label, Icon]) => (
-                <button
-                  key={view as string}
-                  className={viewMode === view ? "active" : ""}
-                  type="button"
-                  onClick={() => changeViewMode(view as ViewMode)}
-                >
-                  <Icon size={15} />
-                  {label as string}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {isTaskComposerOpen
-            ? createPortal(
+	          {isTaskComposerOpen
+	            ? createPortal(
                 <div
                   className="composer-modal-overlay"
                   role="presentation"
@@ -4038,9 +4044,9 @@ function App() {
             </>
           ) : null}
 
-          {viewMode === "sprint" ? (
-            <section className="insight-grid">
-              <article className="summary-card planning-form-card">
+	          {viewMode === "sprint" ? (
+	            <section className="insight-grid">
+	              <article className="summary-card planning-form-card">
                 <div className="section-title">
                   <Target size={18} />
                   <h2>{editingSprintId ? "Edit sprint" : "Create sprint"}</h2>
@@ -4123,12 +4129,81 @@ function App() {
                       <X size={16} />
                       Cancel edit
                     </button>
-                  ) : null}
-                </form>
-              </article>
-              {activeSprint ? (
-                <>
-                  <article className="summary-card wide">
+	                  ) : null}
+	                </form>
+	              </article>
+	              <article className="summary-card roadmap-list-card">
+	                <div className="section-title">
+	                  <ClipboardList size={18} />
+	                  <h2>All sprints</h2>
+	                </div>
+	                <p>Edit, delete, and refocus sprint planning from one consistent inventory.</p>
+	                <div className="roadmap-list" aria-label="All sprints">
+	                  {activeSprints.map((sprint) => {
+	                    const sprintTasksForCard = boardTasks.filter((task) => task.sprintId === sprint.id);
+	                    const sprintRelease = getRelease(activeReleases, sprint.releaseId);
+	                    const sprintDone = completedPoints(sprintTasksForCard);
+	                    const sprintTotal = sumPoints(sprintTasksForCard);
+	                    const sprintSummary = firstGoalLine(sprint.goal);
+	                    const isFocused = activeSprint?.id === sprint.id;
+
+	                    return (
+	                      <article
+	                        className={`roadmap-item ${isFocused ? "active" : ""}`}
+	                        key={sprint.id}
+	                      >
+	                        <div className="roadmap-item-copy">
+	                          <div className="roadmap-item-heading">
+	                            <strong>{sprint.name}</strong>
+	                            {isFocused ? <span className="roadmap-item-badge">In focus</span> : null}
+	                          </div>
+	                          {sprintSummary ? <p>{sprintSummary}</p> : null}
+	                          <div className="roadmap-item-meta">
+	                            <span>{sprintRelease.name}</span>
+	                            <span>{sprint.startDate} to {sprint.endDate}</span>
+	                            <span>{sprint.capacity} capacity</span>
+	                            <span>{sprintDone}/{sprintTotal} pts done</span>
+	                          </div>
+	                        </div>
+	                        <div className="roadmap-item-actions">
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            onClick={() => {
+	                              setActiveReleaseId(sprint.releaseId);
+	                              setActiveSprintId(sprint.id);
+	                              setPrefersReleaseScope(false);
+	                            }}
+	                          >
+	                            Focus
+	                          </button>
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap}
+	                            onClick={() => startEditSprint(sprint)}
+	                          >
+	                            <Pencil size={15} />
+	                            Edit
+	                          </button>
+	                          <button
+	                            className="danger-button danger-button-subtle"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap}
+	                            onClick={() => deleteSprint(sprint.id)}
+	                          >
+	                            <Trash2 size={15} />
+	                            Delete
+	                          </button>
+	                        </div>
+	                      </article>
+	                    );
+	                  })}
+	                </div>
+	              </article>
+	              {activeSprint ? (
+	                <>
+	                  <article className="summary-card wide">
                     <h2>{activeSprint.name}</h2>
                     <GoalList goal={activeSprint.goal} />
                     <div className="summary-stats">
@@ -4175,9 +4250,9 @@ function App() {
             </section>
           ) : null}
 
-          {viewMode === "epics" ? (
-            <section className="insight-grid">
-              <article className="summary-card planning-form-card">
+	          {viewMode === "epics" ? (
+	            <section className="insight-grid">
+	              <article className="summary-card planning-form-card">
                 <div className="section-title">
                   <Layers3 size={18} />
                   <h2>{editingEpicId ? "Edit epic" : "Create epic"}</h2>
@@ -4241,51 +4316,89 @@ function App() {
                       <X size={16} />
                       Cancel edit
                     </button>
-                  ) : null}
-                </form>
-              </article>
-              {releaseEpics.map((epic) => {
-                const epicTasks = boardTasks.filter((task) => task.epicId === epic.id);
-                const total = sumPoints(epicTasks);
-                const done = completedPoints(epicTasks);
-                const percent = total > 0 ? (done / total) * 100 : 0;
+	                  ) : null}
+	                </form>
+	              </article>
+	              <article className="summary-card roadmap-list-card">
+	                <div className="section-title">
+	                  <ClipboardList size={18} />
+	                  <h2>All epics</h2>
+	                </div>
+	                <p>Keep cross-release epic management in one list instead of card-by-card editing.</p>
+	                <div className="roadmap-list" aria-label="All epics">
+	                  {activeEpics.map((epic) => {
+	                    const epicTasks = boardTasks.filter((task) => task.epicId === epic.id);
+	                    const epicOwner = getMember(members, epic.ownerId);
+	                    const epicRelease = getRelease(activeReleases, epic.releaseId);
+	                    const epicDone = completedPoints(epicTasks);
+	                    const epicTotal = sumPoints(epicTasks);
+	                    const isFocused = selectedEpic?.id === epic.id;
+	                    const epicSummary = firstGoalLine(epic.goal);
 
-                return (
-                  <article className="summary-card" key={epic.id}>
-                    <h2>{epic.name}</h2>
-                    <GoalList goal={epic.goal} />
-                    <div className="summary-stats">
-                      <span><strong>{done}</strong> done</span>
-                      <span><strong>{total - done}</strong> left</span>
-                      <span><strong>{epicTasks.length}</strong> tasks</span>
-                    </div>
-                    <ProgressBar value={percent} />
-	                    <button
-	                      className="ghost-button inline-action"
-	                      type="button"
-	                      disabled={!currentPermissions.manageRoadmap}
-	                      onClick={() => startEditEpic(epic)}
-	                    >
-	                      <Pencil size={16} />
-	                      Edit epic
-	                    </button>
-                      <div className="destructive-action-row">
-	                    <button
-	                      className="danger-button danger-button-subtle"
-	                      type="button"
-	                      disabled={!currentPermissions.manageRoadmap}
-	                      onClick={() => deleteEpic(epic.id)}
-	                    >
-	                      <Trash2 size={16} />
-	                      Delete epic
-	                    </button>
-                      </div>
-	                  </article>
-	                );
-	              })}
-              <BurndownChart
-                title={`${activeEpicLabel} burndown`}
-                subtitle={selectedEpic?.goal ?? activeRelease.goal}
+	                    return (
+	                      <article className={`roadmap-item ${isFocused ? "active" : ""}`} key={epic.id}>
+	                        <div className="roadmap-item-copy">
+	                          <div className="roadmap-item-heading">
+	                            <strong>{epic.name}</strong>
+	                            {isFocused ? <span className="roadmap-item-badge">In focus</span> : null}
+	                          </div>
+	                          {epicSummary ? <p>{epicSummary}</p> : null}
+	                          <div className="roadmap-item-meta">
+	                            <span>{epicRelease.name}</span>
+	                            <span>{epicOwner.name}</span>
+	                            <span>{Math.max(0, epicTotal - epicDone)} pts left</span>
+	                            <span>{epicTasks.length} tasks</span>
+	                          </div>
+	                        </div>
+	                        <div className="roadmap-item-actions">
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            onClick={() => {
+	                              setActiveReleaseId(epic.releaseId);
+	                              setActiveEpicId(epic.id);
+	                            }}
+	                          >
+	                            Focus
+	                          </button>
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap}
+	                            onClick={() => startEditEpic(epic)}
+	                          >
+	                            <Pencil size={15} />
+	                            Edit
+	                          </button>
+	                          <button
+	                            className="danger-button danger-button-subtle"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap}
+	                            onClick={() => deleteEpic(epic.id)}
+	                          >
+	                            <Trash2 size={15} />
+	                            Delete
+	                          </button>
+	                        </div>
+	                      </article>
+	                    );
+	                  })}
+	                </div>
+	              </article>
+	              <article className="summary-card wide">
+	                <h2>{activeEpicLabel}</h2>
+	                <GoalList goal={selectedEpic?.goal ?? activeRelease.goal} />
+	                <div className="summary-stats">
+	                  <span><strong>{activeEpicDonePoints}</strong> done</span>
+	                  <span><strong>{activeEpicRemainingPoints}</strong> left</span>
+	                  <span><strong>{activeEpicTasks.length}</strong> tasks</span>
+	                  <span><strong>{activeEpicOwner?.name ?? activeRelease.name}</strong> owner</span>
+	                </div>
+	                <ProgressBar value={activeEpicTotalPoints > 0 ? (activeEpicDonePoints / activeEpicTotalPoints) * 100 : 0} />
+	              </article>
+	              <BurndownChart
+	                title={`${activeEpicLabel} burndown`}
+	                subtitle={selectedEpic?.goal ?? activeRelease.goal}
                 points={calculateBurndown(
                   activeEpicTasks,
                   activeRelease.startDate,
@@ -4295,9 +4408,9 @@ function App() {
             </section>
           ) : null}
 
-          {viewMode === "releases" ? (
-            <section className="insight-grid">
-              <article className="summary-card planning-form-card">
+	          {viewMode === "releases" ? (
+	            <section className="insight-grid">
+	              <article className="summary-card planning-form-card">
                 <div className="section-title">
                   <Flag size={18} />
                   <h2>{editingReleaseId ? "Edit release" : "Create release"}</h2>
@@ -4355,51 +4468,91 @@ function App() {
                       <X size={16} />
                       Cancel edit
                     </button>
-                  ) : null}
-                </form>
-              </article>
-              {activeReleases.map((release) => {
-                const releaseTasks = boardTasks.filter((task) => task.releaseId === release.id);
-                const total = sumPoints(releaseTasks);
-                const done = completedPoints(releaseTasks);
-                const percent = total > 0 ? (done / total) * 100 : 0;
+	                  ) : null}
+	                </form>
+	              </article>
+	              <article className="summary-card roadmap-list-card">
+	                <div className="section-title">
+	                  <ClipboardList size={18} />
+	                  <h2>All releases</h2>
+	                </div>
+	                <p>Manage every release from one list, with clearer focus switching and safer deletes.</p>
+	                <div className="roadmap-list" aria-label="All releases">
+	                  {activeReleases.map((release) => {
+	                    const releaseTasks = boardTasks.filter((task) => task.releaseId === release.id);
+	                    const releaseDone = completedPoints(releaseTasks);
+	                    const releaseTotal = sumPoints(releaseTasks);
+	                    const releaseSummary = firstGoalLine(release.goal);
+	                    const releaseSprintCount = activeSprints.filter((sprint) => sprint.releaseId === release.id).length;
+	                    const releaseEpicCount = activeEpics.filter((epic) => epic.releaseId === release.id).length;
+	                    const isFocused = activeRelease.id === release.id;
 
-                return (
-                  <article className="summary-card" key={release.id}>
-                    <h2>{release.name}</h2>
-                    <GoalList goal={release.goal} />
-                    <div className="summary-stats">
-                      <span><strong>{done}</strong> done</span>
-                      <span><strong>{total}</strong> committed</span>
-                      <span><strong>{release.endDate}</strong> ship target</span>
-                    </div>
-                    <ProgressBar value={percent} />
-                    <button
-                      className="ghost-button inline-action"
-                      type="button"
-                      disabled={!currentPermissions.manageRoadmap}
-                      onClick={() => startEditRelease(release)}
-                    >
-                      <Pencil size={16} />
-                      Edit release
-                    </button>
-                    <div className="destructive-action-row">
-                      <button
-                        className="danger-button danger-button-subtle"
-                        type="button"
-                        disabled={!currentPermissions.manageRoadmap || activeReleases.length <= 1}
-                        onClick={() => deleteRelease(release.id)}
-                      >
-                        <Trash2 size={16} />
-                        Delete release
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-              <BurndownChart
-                title={`${activeRelease.name} burndown`}
-                subtitle={`${activeRelease.startDate} to ${activeRelease.endDate}`}
+	                    return (
+	                      <article className={`roadmap-item ${isFocused ? "active" : ""}`} key={release.id}>
+	                        <div className="roadmap-item-copy">
+	                          <div className="roadmap-item-heading">
+	                            <strong>{release.name}</strong>
+	                            {isFocused ? <span className="roadmap-item-badge">In focus</span> : null}
+	                          </div>
+	                          {releaseSummary ? <p>{releaseSummary}</p> : null}
+	                          <div className="roadmap-item-meta">
+	                            <span>{release.startDate} to {release.endDate}</span>
+	                            <span>{releaseDone}/{releaseTotal} pts done</span>
+	                            <span>{releaseSprintCount} sprints</span>
+	                            <span>{releaseEpicCount} epics</span>
+	                          </div>
+	                        </div>
+	                        <div className="roadmap-item-actions">
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            onClick={() => {
+	                              setActiveReleaseId(release.id);
+	                              setActiveSprintId("");
+	                              setPrefersReleaseScope(true);
+	                              setActiveEpicId(ALL_EPICS_ID);
+	                            }}
+	                          >
+	                            Focus
+	                          </button>
+	                          <button
+	                            className="ghost-button"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap}
+	                            onClick={() => startEditRelease(release)}
+	                          >
+	                            <Pencil size={15} />
+	                            Edit
+	                          </button>
+	                          <button
+	                            className="danger-button danger-button-subtle"
+	                            type="button"
+	                            disabled={!currentPermissions.manageRoadmap || activeReleases.length <= 1}
+	                            onClick={() => deleteRelease(release.id)}
+	                          >
+	                            <Trash2 size={15} />
+	                            Delete
+	                          </button>
+	                        </div>
+	                      </article>
+	                    );
+	                  })}
+	                </div>
+	              </article>
+	              <article className="summary-card wide">
+	                <h2>{activeRelease.name}</h2>
+	                <GoalList goal={activeRelease.goal} />
+	                <div className="summary-stats">
+	                  <span><strong>{activeReleaseCompletedPoints}</strong> done</span>
+	                  <span><strong>{activeReleaseTotalPoints}</strong> committed</span>
+	                  <span><strong>{activeReleaseRemainingPoints}</strong> remaining</span>
+	                  <span><strong>{activeRelease.endDate}</strong> ship target</span>
+	                </div>
+	                <ProgressBar value={activeReleaseDonePercent} />
+	              </article>
+	              <BurndownChart
+	                title={`${activeRelease.name} burndown`}
+	                subtitle={`${activeRelease.startDate} to ${activeRelease.endDate}`}
                 points={calculateBurndown(
                   activeReleaseTasks,
                   activeRelease.startDate,
@@ -4409,47 +4562,55 @@ function App() {
             </section>
           ) : null}
 
-          {viewMode === "reports" ? (
-            <section className="reports-grid">
-              <article className="summary-card selector-row report-summary-card">
-                <div className="section-title">
-                  <BarChart3 size={18} />
-                  <h2>{activeRelease.name} reporting</h2>
-                </div>
-                <p>
-                  Release reporting rolls up backlog carried into each sprint, scope added inside
-                  the sprint, completed work, and what remained after sprint close.
-                </p>
-                <div className="summary-stats">
-                  <span>
-                    <strong>{activeReleaseTotalPoints}</strong> pts in release
-                  </span>
-                  <span>
-                    <strong>{activeReleaseRemainingPoints}</strong> pts remaining
-                  </span>
-                  <span>
-                    <strong>{releaseScopeAddedPoints}</strong> pts added across sprints
-                  </span>
-                  <span>
-                    <strong>{releaseAverageVelocity}</strong> avg sprint velocity
-                  </span>
-                  <span>
-                    <strong>
-                      {releaseProjectedSprintsRemaining === null
-                        ? "TBD"
-                        : releaseProjectedSprintsRemaining}
-                    </strong>{" "}
-                    projected sprints left
-                  </span>
-                  {latestReleaseReportRow ? (
-                    <span>
-                      <strong>{latestReleaseReportRow.unestimatedRemainingCount}</strong>{" "}
-                      unestimated items left
-                    </span>
-                  ) : null}
-                </div>
-                <p className="report-projection-copy">{releaseProjectionCopy}</p>
-              </article>
+	          {viewMode === "reports" ? (
+	            <section className="reports-grid">
+	              <article className="summary-card selector-row report-summary-card">
+	                <div className="report-summary-header">
+	                  <div>
+	                    <div className="section-title">
+	                      <BarChart3 size={18} />
+	                      <h2>{activeRelease.name} reporting</h2>
+	                    </div>
+	                    <p>
+	                      Release reporting rolls up carried backlog, sprint scope changes, completed
+	                      work, and what still remains after each sprint closes.
+	                    </p>
+	                  </div>
+	                  <div className="report-signal-grid">
+	                    <article className="report-signal-card">
+	                      <span>Release scope</span>
+	                      <strong>{activeReleaseTotalPoints} pts</strong>
+	                      <small>{activeReleaseRemainingPoints} pts remaining</small>
+	                    </article>
+	                    <article className="report-signal-card">
+	                      <span>Scope added</span>
+	                      <strong>{releaseScopeAddedPoints} pts</strong>
+	                      <small>Across all completed sprints</small>
+	                    </article>
+	                    <article className="report-signal-card">
+	                      <span>Avg velocity</span>
+	                      <strong>{releaseAverageVelocity} pts</strong>
+	                      <small>Per sprint completed</small>
+	                    </article>
+	                    <article className="report-signal-card">
+	                      <span>Projected finish</span>
+	                      <strong>
+	                        {releaseProjectedSprintsRemaining === null
+	                          ? "TBD"
+	                          : `${releaseProjectedSprintsRemaining} sprint${
+	                              releaseProjectedSprintsRemaining === 1 ? "" : "s"
+	                            }`}
+	                      </strong>
+	                      <small>
+	                        {latestReleaseReportRow
+	                          ? `${latestReleaseReportRow.unestimatedRemainingCount} unestimated items left`
+	                          : "Need at least one sprint to project"}
+	                      </small>
+	                    </article>
+	                  </div>
+	                </div>
+	                <p className="report-projection-copy">{releaseProjectionCopy}</p>
+	              </article>
               {releaseReportRows.length > 0 ? (
                 <>
                   <BurndownChart
