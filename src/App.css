@@ -344,10 +344,13 @@ h1 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  min-height: 260px;
+  padding: 24px;
+  min-height: 232px;
+  border-radius: 28px;
+  border-color: rgba(116, 172, 214, 0.16);
   background:
-    linear-gradient(135deg, rgba(255, 250, 241, 0.08), transparent 34%),
+    radial-gradient(circle at top right, rgba(116, 172, 214, 0.12), transparent 16rem),
+    linear-gradient(135deg, rgba(255, 250, 241, 0.06), transparent 36%),
     var(--charcoal);
   color: #fffdf9;
   box-shadow: var(--hard-shadow), var(--shadow);
@@ -368,13 +371,15 @@ h1 {
 .signal-card::after {
   position: absolute;
   inset: auto 0 0;
-  height: 54px;
+  height: 68px;
   pointer-events: none;
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgba(255, 250, 241, 0.08) 0 1px,
-    transparent 1px 8px
-  );
+  background:
+    linear-gradient(180deg, transparent, rgba(5, 10, 16, 0.28)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 250, 241, 0.06) 0 1px,
+      transparent 1px 10px
+    );
   content: "";
 }
 
@@ -382,38 +387,42 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
-  color: rgba(255, 253, 249, 0.72);
-  font-size: 13px;
+  margin-bottom: 20px;
+  color: rgba(222, 234, 247, 0.76);
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .status-light {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
   background: var(--moss);
-  box-shadow: 0 0 0 6px rgba(111, 138, 93, 0.2);
+  box-shadow: 0 0 0 8px rgba(78, 138, 114, 0.18);
 }
 
 .command-panel strong {
   display: block;
-  margin-bottom: 12px;
-  font-size: 32px;
-  line-height: 1;
+  margin-bottom: 10px;
+  font-family: var(--display-font);
+  font-size: 34px;
+  letter-spacing: -0.05em;
+  line-height: 0.98;
 }
 
 .command-panel p,
 .signal-card p {
   margin-bottom: 0;
-  color: rgba(255, 253, 249, 0.72);
-  line-height: 1.55;
+  color: rgba(214, 228, 245, 0.74);
+  line-height: 1.5;
 }
 
 .command-meta {
-  margin-bottom: 20px;
-  font-size: 15px;
+  margin-bottom: 18px;
+  max-width: 20rem;
+  font-size: 14px;
 }
 
 .signal-card {
@@ -421,13 +430,14 @@ h1 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 253, 249, 0.16);
-  border-radius: 8px;
-  padding: 18px;
-  min-height: 260px;
+  border: 1px solid rgba(173, 200, 231, 0.14);
+  border-radius: 28px;
+  padding: 24px;
+  min-height: 232px;
   background:
-    linear-gradient(135deg, rgba(255, 250, 241, 0.07), transparent 34%),
-    rgba(36, 35, 31, 0.96);
+    radial-gradient(circle at top right, rgba(116, 172, 214, 0.08), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 250, 241, 0.05), transparent 38%),
+    rgba(12, 19, 30, 0.96);
   color: #fffdf9;
   box-shadow: var(--hard-shadow), var(--shadow);
 }
@@ -439,27 +449,27 @@ h1 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .signal-label {
-  color: rgba(255, 253, 249, 0.68);
+  color: rgba(214, 228, 245, 0.66);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .signal-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  border: 1px solid rgba(255, 253, 249, 0.12);
+  min-height: 30px;
+  border: 1px solid rgba(173, 200, 231, 0.12);
   border-radius: 999px;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -489,8 +499,10 @@ h1 {
   z-index: 1;
   display: block;
   margin-bottom: 12px;
-  font-size: 26px;
-  line-height: 1.05;
+  font-family: var(--display-font);
+  font-size: 27px;
+  letter-spacing: -0.05em;
+  line-height: 1.02;
 }
 
 .signal-stats {
@@ -499,7 +511,7 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
 .signal-stats span {
@@ -507,11 +519,11 @@ h1 {
   align-items: baseline;
   gap: 4px;
   min-height: 30px;
-  border: 1px solid rgba(255, 253, 249, 0.12);
+  border: 1px solid rgba(173, 200, 231, 0.12);
   border-radius: 999px;
   padding: 0 10px;
-  background: rgba(255, 253, 249, 0.08);
-  color: rgba(255, 253, 249, 0.76);
+  background: rgba(173, 200, 231, 0.08);
+  color: rgba(214, 228, 245, 0.78);
   font-size: 12px;
   font-weight: 800;
 }
@@ -531,7 +543,7 @@ h1 {
 .signal-card small {
   display: block;
   margin-top: auto;
-  color: rgba(255, 253, 249, 0.58);
+  color: rgba(214, 228, 245, 0.58);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
@@ -633,9 +645,9 @@ h1 {
 .composer-panel {
   margin-bottom: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 20px;
-  background: rgba(255, 253, 249, 0.72);
+  border-radius: 22px;
+  padding: 22px;
+  background: rgba(255, 253, 249, 0.76);
 }
 
 .composer-modal-overlay {
@@ -706,7 +718,7 @@ textarea,
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
   color: var(--ink);
   letter-spacing: 0;
@@ -720,8 +732,8 @@ textarea,
 
 input,
 .select-field-trigger {
-  height: 42px;
-  padding: 0 12px;
+  height: 46px;
+  padding: 0 14px;
 }
 
 .select-field {
@@ -734,7 +746,7 @@ input,
   justify-content: space-between;
   gap: 12px;
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 600;
   text-align: left;
 }
 
@@ -767,7 +779,7 @@ input,
   gap: 4px;
   overflow: auto;
   border: 1px solid rgba(25, 23, 19, 0.12);
-  border-radius: 12px;
+  border-radius: 18px;
   background: rgba(255, 253, 249, 0.98);
   padding: 6px;
   box-shadow: 0 18px 42px rgba(25, 23, 19, 0.18);
@@ -783,7 +795,7 @@ input,
   min-height: 40px;
   width: 100%;
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: transparent;
   color: var(--ink);
   padding: 0 12px;
@@ -981,8 +993,8 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
-  border-radius: 8px;
+  min-height: 44px;
+  border-radius: 999px;
   border: 1px solid var(--line);
   padding: 0 14px;
   font-weight: 800;
@@ -999,7 +1011,7 @@ button:disabled {
 }
 
 .ghost-button {
-  background: rgba(255, 253, 249, 0.72);
+  background: rgba(255, 253, 249, 0.12);
   color: var(--ink);
 }
 
@@ -1049,7 +1061,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .active-board-bar {
@@ -1216,8 +1228,8 @@ button:disabled {
 .metric-card {
   position: relative;
   overflow: hidden;
-  min-height: 92px;
-  padding: 14px;
+  min-height: 108px;
+  padding: 18px;
   box-shadow: none;
 }
 
@@ -1233,10 +1245,11 @@ button:disabled {
 
 .metric-card span {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: rgba(25, 23, 19, 0.62);
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -1244,8 +1257,10 @@ button:disabled {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 34px;
-  line-height: 1;
+  font-family: var(--display-font);
+  font-size: 32px;
+  letter-spacing: -0.05em;
+  line-height: 0.96;
 }
 
 .metric-card small {
@@ -1570,9 +1585,9 @@ button:disabled {
   align-items: center;
   gap: 9px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
-  padding: 0 11px;
+  padding: 0 12px;
 }
 
 .search-field input,
@@ -1594,7 +1609,7 @@ button:disabled {
 }
 
 .compact-select .select-field-trigger {
-  height: 42px;
+  height: 44px;
   padding: 0;
   color: inherit;
 }
@@ -1740,14 +1755,12 @@ button:disabled {
   background: rgba(173, 200, 231, 0.08);
 }
 
-:root[data-theme="dark"] .planning-selector .compact-select:hover,
 :root[data-theme="dark"] .planning-selector .compact-select:focus-within {
   border-color: rgba(173, 200, 231, 0.14);
   background: rgba(173, 200, 231, 0.08);
   box-shadow: none;
 }
 
-:root[data-theme="dark"] .board-actions .compact-select:hover,
 :root[data-theme="dark"] .board-actions .compact-select:focus-within {
   border-color: rgba(173, 200, 231, 0.16);
   background: rgba(173, 200, 231, 0.08);
@@ -1776,7 +1789,7 @@ button:disabled {
 
 :root[data-theme="dark"] .ghost-button,
 :root[data-theme="dark"] .danger-button {
-  background: rgba(255, 250, 241, 0.08);
+  background: rgba(173, 200, 231, 0.08);
   color: var(--ink);
 }
 
@@ -1786,12 +1799,11 @@ button:disabled {
   border-color: rgba(255, 250, 241, 0.14);
 }
 
-:root[data-theme="dark"] .active-board-bar,
 :root[data-theme="dark"] .board-actions .compact-select,
 :root[data-theme="dark"] .board-actions .ghost-button,
 :root[data-theme="dark"] .board-actions .danger-button {
-  border-color: rgba(255, 250, 241, 0.16);
-  background: rgba(255, 250, 241, 0.08);
+  border-color: rgba(173, 200, 231, 0.16);
+  background: rgba(173, 200, 231, 0.08);
   color: var(--ink);
 }
 
@@ -1803,7 +1815,7 @@ button:disabled {
 
 :root[data-theme="dark"] .task-danger-zone,
 :root[data-theme="dark"] .destructive-action-row {
-  border-top-color: rgba(255, 250, 241, 0.1);
+  border-top-color: rgba(173, 200, 231, 0.1);
 }
 
 :root[data-theme="dark"] .team-load-stat,
@@ -1814,7 +1826,7 @@ button:disabled {
 :root[data-theme="dark"] .summary-stats span,
 :root[data-theme="dark"] .chart-heading span,
 :root[data-theme="dark"] .report-table tbody tr {
-  background: rgba(255, 250, 241, 0.06);
+  background: rgba(173, 200, 231, 0.06);
 }
 
 :root[data-theme="dark"] .summary-stats .summary-stat-warning {
@@ -1834,8 +1846,8 @@ button:disabled {
 :root[data-theme="dark"] .permission-row,
 :root[data-theme="dark"] .restore-column,
 :root[data-theme="dark"] .restore-row {
-  border-color: rgba(255, 250, 241, 0.12);
-  background: rgba(255, 250, 241, 0.05);
+  border-color: rgba(173, 200, 231, 0.12);
+  background: rgba(173, 200, 231, 0.05);
 }
 
 :root[data-theme="dark"] .permission-row h3,
@@ -1935,8 +1947,8 @@ button:disabled {
   position: relative;
   overflow: hidden;
   min-width: 0;
-  min-height: 520px;
-  padding: 16px;
+  min-height: 500px;
+  padding: 18px;
   box-shadow: none;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 8rem),
@@ -1987,7 +1999,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .lane-header h2 {
@@ -2019,11 +2031,13 @@ button:disabled {
 
 .task-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .task-card {
-  padding: 15px;
+  padding: 16px;
+  border-color: rgba(173, 200, 231, 0.12);
+  background: rgba(10, 18, 28, 0.92);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
   min-width: 0;
   overflow: hidden;
@@ -2095,8 +2109,8 @@ button:disabled {
 .task-card h3 {
   margin: 12px 0 8px;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1.28;
+  font-size: 17px;
+  line-height: 1.3;
 }
 
 .task-card p {
@@ -2165,7 +2179,7 @@ button:disabled {
 .task-meta div {
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 9px;
+  padding: 10px;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -2228,7 +2242,7 @@ button:disabled {
   gap: 8px;
   min-height: 96px;
   border: 1px dashed rgba(30, 30, 30, 0.18);
-  border-radius: 8px;
+  border-radius: 18px;
   padding: 13px;
   color: rgba(30, 30, 30, 0.54);
   font-size: 13px;
@@ -2250,7 +2264,7 @@ button:disabled {
 .summary-card,
 .chart-card,
 .team-card {
-  padding: 16px;
+  padding: 20px;
   box-shadow: none;
 }
 
@@ -2283,15 +2297,17 @@ button:disabled {
 .summary-card h2,
 .team-card h2,
 .chart-card h3 {
-  margin: 0 0 7px;
-  font-size: 20px;
+  margin: 0 0 8px;
+  font-family: var(--display-font);
+  font-size: 22px;
+  letter-spacing: -0.03em;
 }
 
 .summary-card p,
 .team-card p,
 .chart-card p {
   margin-bottom: 14px;
-  color: rgba(30, 30, 30, 0.68);
+  color: rgba(214, 228, 245, 0.72);
   line-height: 1.55;
 }
 
@@ -2299,14 +2315,14 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .summary-stats span {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.55);
+  border-radius: 14px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--stone);
   font-size: 12px;
   font-weight: 800;
@@ -2335,7 +2351,7 @@ button:disabled {
   justify-content: flex-end;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid rgba(25, 23, 19, 0.08);
+  border-top: 1px solid rgba(173, 200, 231, 0.1);
 }
 
 .composer-danger-row {
@@ -2353,10 +2369,10 @@ button:disabled {
 }
 
 .progress-track {
-  height: 10px;
+  height: 12px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(30, 30, 30, 0.1);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .progress-track span {
@@ -2375,7 +2391,7 @@ button:disabled {
 
 .chart-heading span {
   border-radius: 999px;
-  background: rgba(30, 30, 30, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   padding: 7px 10px;
   font-size: 12px;
   font-weight: 800;
@@ -2788,7 +2804,7 @@ button:disabled {
   align-content: start;
   gap: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   padding: 12px;
   min-height: 132px;
   background: rgba(255, 255, 255, 0.42);
@@ -2814,7 +2830,7 @@ button:disabled {
   gap: 8px;
   min-height: 44px;
   border: 1px solid rgba(25, 23, 19, 0.08);
-  border-radius: 8px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.46);
   padding: 10px;
 }
@@ -2832,7 +2848,7 @@ button:disabled {
   flex: none;
   min-height: 30px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
   color: var(--ink);
   padding: 0 10px;
@@ -2848,7 +2864,7 @@ button:disabled {
 
 .permission-row {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.42);
 }
@@ -2882,9 +2898,9 @@ button:disabled {
   align-items: center;
   gap: 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.54);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .member-main {
